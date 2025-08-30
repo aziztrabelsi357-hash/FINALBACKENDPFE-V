@@ -11,4 +11,9 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findByType(String type);
     List<Notification> findByTypeAndReadFalse(String type);
     List<Notification> findAllByOrderByCreatedAtDesc();
+    
+    // Farm-specific queries
+    List<Notification> findByFarmId(String farmId);
+    List<Notification> findByFarmIdAndReadFalse(String farmId);
+    List<Notification> findByFarmIdOrderByCreatedAtDesc(String farmId);
 }

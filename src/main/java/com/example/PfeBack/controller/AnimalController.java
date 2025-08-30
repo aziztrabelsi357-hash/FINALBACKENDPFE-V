@@ -36,6 +36,12 @@ public class AnimalController {
 		return animalService.getAnimalById(id);
 	}
 
+	@GetMapping("/{id}/species")
+	public String getAnimalSpecies(@PathVariable String id) {
+		Animal animal = animalService.getAnimalById(id);
+		return animal != null ? animal.getSpecies() : null;
+	}
+
 	@PostMapping
 	public Animal addAnimal(@RequestBody Animal animal) {
 		return animalService.saveAnimal(animal);

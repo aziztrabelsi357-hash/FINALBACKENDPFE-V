@@ -450,4 +450,114 @@ public class NotificationService {
         notifications.forEach(notification -> notification.setRead(true));
         notificationRepository.saveAll(notifications);
     }
+
+    // Farm-specific method for marking all notifications as read for a specific farm
+    public void markAllAsRead(String farmId) {
+        List<Notification> notifications = notificationRepository.findByFarmIdAndReadFalse(farmId);
+        notifications.forEach(notification -> notification.setRead(true));
+        notificationRepository.saveAll(notifications);
+    }
+
+    // Farm-specific method for generating dynamic notifications for a specific farm
+    public void generateDynamicNotifications(String farmId) {
+        // Generate notifications based on real data for a specific farm
+        try {
+            generateAnimalNotificationsForFarm(farmId);
+        } catch (Exception e) {
+            System.out.println("No animal data found for farm " + farmId);
+        }
+        
+        try {
+            generatePlantNotificationsForFarm(farmId);
+        } catch (Exception e) {
+            System.out.println("No plant data found for farm " + farmId);
+        }
+    }
+
+    private void generateAnimalNotificationsForFarm(String farmId) {
+        List<Animal> animals = animalRepository.findByFarmId(farmId);
+        
+        for (Animal animal : animals) {
+            // Check water intake
+            if (animal.getTodayIntakeLiters() != null && animal.getRecommendedIntakeLiters() != null) {
+                double intakeRatio = animal.getTodayIntakeLiters() / animal.getRecommendedIntakeLiters();
+                if (intakeRatio < 0.6) { // Less than 60% of recommended intake
+                    createNotificationForFarm(
+                        "Low Water Intake Alert",
+                        String.format("Your %s '%s' has only consumed %.1fL of water today. Recommended intake is %.1fL. Check water tank and animal health.",
+                            animal.getSpecies(), animal.getName(), animal.getTodayIntakeLiters(), animal.getRecommendedIntakeLiters()),
+                        "animal",
+                        farmId
+                    );
+                }
+            }
+            
+            // Check health status
+            if (animal.getHealthStatus() != null && !animal.getHealthStatus().equalsIgnoreCase("healthy")) {
+                createNotificationForFarm(
+                    "Health Status Alert",
+                    String.format("Your %s '%s' has health status: %s. Consider veterinary examination.",
+                        animal.getSpecies(), animal.getName(), animal.getHealthStatus()),
+                    "animal",
+                    farmId
+                );
+            }
+        }
+    }
+
+    private void generatePlantNotificationsForFarm(String farmId) {
+        List<Plant> plants = plantRepository.findByFarmId(farmId);
+        
+        for (Plant plant : plants) {
+            // Check soil moisture
+            if (plant.getSoilMoisture() != null && plant.getSoilMoisture() < 30) {
+                createNotificationForFarm(
+                    "Low Soil Moisture Alert",
+                    String.format("Your %s '%s' has soil moisture at %d%%. Irrigation recommended immediately.",
+                        plant.getType(), plant.getName(), plant.getSoilMoisture()),
+                    "plant",
+                    farmId
+                );
+            }
+            
+            // Check harvest dates
+            if (plant.getExpectedHarvestDate() != null) {
+                try {
+                    LocalDate harvestDate = LocalDate.parse(plant.getExpectedHarvestDate());
+                    long daysUntilHarvest = ChronoUnit.DAYS.between(LocalDate.now(), harvestDate);
+                    
+                    if (daysUntilHarvest <= 7 && daysUntilHarvest >= 0) {
+                        createNotificationForFarm(
+                            "Harvest Time Approaching",
+                            String.format("Your %s '%s' is ready for harvest in %d days. Prepare harvesting equipment.",
+                                plant.getType(), plant.getName(), daysUntilHarvest),
+                            "plant",
+                            farmId
+                        );
+                    }
+                } catch (Exception e) {
+                    // Handle date parsing errors silently
+                }
+            }
+            
+            // Check health status
+            if (plant.getHealthStatus() != null && !plant.getHealthStatus().equalsIgnoreCase("healthy")) {
+                createNotificationForFarm(
+                    "Plant Health Alert",
+                    String.format("Your %s '%s' shows health issues: %s. Consider treatment or consultation.",
+                        plant.getType(), plant.getName(), plant.getHealthStatus()),
+                    "plant",
+                    farmId
+                );
+            }
+        }
+    }
+
+    private void createNotificationForFarm(String title, String message, String type, String farmId) {
+        Notification notification = new Notification(title, message, type, farmId);
+        // Randomize creation time for more realistic data
+        LocalDateTime randomTime = LocalDateTime.now().minusHours(random.nextInt(72));
+        notification.setCreatedAt(randomTime);
+        notificationRepository.save(notification);
+    }
 }

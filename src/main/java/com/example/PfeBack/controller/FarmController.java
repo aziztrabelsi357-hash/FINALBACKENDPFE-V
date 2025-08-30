@@ -23,6 +23,7 @@ import com.example.PfeBack.models.Animal;
 import com.example.PfeBack.models.Farm;
 import com.example.PfeBack.models.Notification;
 import com.example.PfeBack.models.Plant;
+import com.example.PfeBack.repository.NotificationRepository;
 
 @RestController
 @RequestMapping("/api/farms")
@@ -36,14 +37,16 @@ public class FarmController {
     private AnimalService animalService;  
     @Autowired
     private NotificationService notificationService;
+    @Autowired
+    private NotificationRepository notificationRepository;
 
 
-    FarmController(FarmService farmService, PlantService plantService, AnimalService animalService, NotificationService notificationService) {
+    FarmController(FarmService farmService, PlantService plantService, AnimalService animalService, NotificationService notificationService, NotificationRepository notificationRepository) {
         this.farmService = farmService;
         this.plantService = plantService;
         this.animalService = animalService;
         this.notificationService = notificationService;
-
+        this.notificationRepository = notificationRepository;
     }
 
     // ✅ Create farm for a user
@@ -54,28 +57,32 @@ public class FarmController {
         return farmService.createFarmForUser(userId, farm);
     }
 
-    // ✅ Get notifications for a farm (currently returns global notifications)
-    // If you later add farmId to Notification, filter by it here.
+    // ✅ Get notifications for a farm (now supports farm-specific filtering)
     @GetMapping("/{farmId}/notifications")
     public List<Notification> getNotificationsForFarm(
             @PathVariable String farmId,
             @RequestParam(required = false) String type,
             @RequestParam(required = false, defaultValue = "false") boolean unreadOnly) {
-        // TODO: filter by farmId when notifications are linked to farms
-        return notificationService.getNotificationsFiltered(type, unreadOnly);
+        
+        // Use farm-specific queries from NotificationRepository
+        if (unreadOnly) {
+            return notificationRepository.findByFarmIdAndReadFalse(farmId);
+        } else {
+            return notificationRepository.findByFarmIdOrderByCreatedAtDesc(farmId);
+        }
     }
 
     @PostMapping("/{farmId}/notifications/generate-dynamic")
     public ResponseEntity<String> generateDynamicNotificationsForFarm(@PathVariable String farmId) {
         // TODO: pass farmId to service when notifications are linked to farms
-        notificationService.generateDynamicNotifications();
+        notificationService.generateDynamicNotifications(farmId);
         return ResponseEntity.ok("Dynamic notifications generated for farm " + farmId);
     }
 
     @PutMapping("/{farmId}/notifications/read-all")
     public ResponseEntity<String> markAllFarmNotificationsAsRead(@PathVariable String farmId) {
         // TODO: only mark notifications for this farm when model supports farmId
-        notificationService.markAllAsRead();
+        notificationService.markAllAsRead(farmId);
         return ResponseEntity.ok("All notifications marked as read for farm " + farmId);
     }
 
